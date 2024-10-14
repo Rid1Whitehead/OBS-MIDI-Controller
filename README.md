@@ -27,7 +27,7 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 1. Clone the repository:
    ```
    git clone https://github.com/yourusername/obs-recording-dashboard.git
-   cd obs-recording-dashboard
+   cd OBS-MIDI-Controller
    ```
 
 2. Create a virtual environment (optional but recommended):
