@@ -1,5 +1,5 @@
 # OBS-MIDI-Controller
-This app manages connections to OBS WebSocket instances and communicates with MIDI signals to control recording functions in OBS. It allows users to start and stop OBS recordings based on MIDI inputs, making it easy to automate video recording tasks using external MIDI controllers.
+This app manages connections to OBS WebSocket instances and communicates with MIDI signals to control recording functions in OBS. It allows users to start and stop OBS recordings based on MIDI inputs, making it easy to automate video recording tasks using external MIDI controllers. Most importantly, it allows synchronized recording of multiple devices and audio tracks, which allows for the opportunity to use ffmpeg scripts to automize video editing.
 
 ## Overview
 The OBS MIDI Recording Controller is a web-based application that allows users to manage multiple OBS (Open Broadcaster Software) instances over WebSocket and control their recording status using MIDI signals. Built using Flask and Flask-SocketIO, this app provides real-time control of OBS recording functions through MIDI inputs, simplifying the process of automating video recording tasks.
