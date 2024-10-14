@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OBS Sync and observation dashboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Include Socket.IO client (version 4.x) without integrity attribute -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>OBS Recording Dashboard</h1>
+    <h2>Some important considerations:</h2>
+    <p>
+        Make sure all devices are on the same network.<br>
+        Do not close the terminal window used to start this dashboard.
+        If device does not connect, kick and renter details
+    </p>
+    <h2>Set MIDI Port</h2>
+<form id="set-midi-port-form">
+    <input type="text" id="midi-port" placeholder="Enter MIDI Port Name" required>
+    <button type="submit">Set MIDI Port</button>
+</form>
+    <h2>Add OBS Instance</h2>
+    <form id="add-device-form">
+        <input type="text" id="name" placeholder="Device Name">
+        <input type="text" id="ip" placeholder="IP Address" required>
+        <input type="number" id="port" placeholder="Port" required>
+        <input type="password" id="password" placeholder="Password">
+        <button type="submit">Add Device</button>
+    </form>
+
+    <h2>Devices</h2>
+    <button id="connect-instances-btn">Connect to All OBS Instances</button>
+    <table class="device-table">
+        <thead>
+            <tr>
+                <th>Device Name</th>
+                <th>Device IP</th>
+                <th>Port</th>
+                <th>Connection Status</th>
+                <th>Recording Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="device-list">
+            <!-- Devices will be dynamically populated -->
+        </tbody>
+    </table>
+
+    <div id="log">
+        <!-- Log messages will appear here -->
+    </div>
+
+    <script>
+        var socket = io();
+
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+        });
+
+        // Fetch initial devices
+        fetch('/get_devices')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received devices:', data);
+                data.forEach(device => {
+                    addDeviceRow(device);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching devices:', error);
+            });
+
+        // Handle device status updates
+        socket.on('device_status', function(data) {
+            console.log('Received device_status:', data);
+            updateDeviceRow(data);
+        });
+
+        // Handle log messages
+        socket.on('log', function(data) {
+            console.log('Received log:', data);
+            var logDiv = document.getElementById('log');
+            var p = document.createElement('p');
+            p.textContent = data.message;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        });
+
+        // Add device form submission
+        document.getElementById('add-device-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var name = document.getElementById('name').value;
+            var ip = document.getElementById('ip').value;
+            var port = document.getElementById('port').value;
+            var password = document.getElementById('password').value;
+
+            fetch('/add_device', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({'ip': ip, 'port': port, 'password': password, 'name': name})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Device added successfully');
+                    // Clear form fields
+                    document.getElementById('name').value = '';
+                    document.getElementById('ip').value = '';
+                    document.getElementById('port').value = '';
+                    document.getElementById('password').value = '';
+                } else {
+                    console.error('Error adding device:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding device:', error);
+                alert('An error occurred while adding the device.');
+            });
+        });
+
+        // Connect to All OBS Instances button
+        document.getElementById('connect-instances-btn').addEventListener('click', function() {
+            fetch('/connect_obs_instances', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Connection attempt initiated');
+                    // Optionally, provide feedback to the user
+                } else {
+                    console.error('Error initiating connection:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error initiating connection:', error);
+                alert('An error occurred while attempting to connect to OBS instances.');
+            });
+        });
+
+        // Add device row to table
+        function addDeviceRow(device) {
+            var tbody = document.getElementById('device-list');
+            var rowId = device.ip + ':' + device.port;
+            var existingRow = document.getElementById(rowId);
+            if (existingRow) {
+                return; // Row already exists
+            }
+            var row = document.createElement('tr');
+            row.id = rowId;
+            row.innerHTML = getDeviceRowHtml(device);
+            tbody.appendChild(row);
+        }
+
+        // Update device row
+        function updateDeviceRow(data) {
+            var rowId = data.ip + ':' + data.port;
+            var row = document.getElementById(rowId);
+
+            if (!row) {
+                // Add new row if it doesn't exist
+                addDeviceRow(data);
+            } else {
+                // Update existing row
+                row.innerHTML = getDeviceRowHtml(data);
+            }
+        }
+
+        // Generate HTML for a device row
+        function getDeviceRowHtml(device) {
+            // Determine the action button based on connection status
+            var actionButton = '';
+            if (device.status === 'Connected') {
+                actionButton = `<button onclick="disconnectDevice('${device.ip}', '${device.port}')">Disconnect</button>`;
+            } else {
+                actionButton = `<button onclick="connectDevice('${device.ip}', '${device.port}')">Connect</button>`;
+            }
+            // Add the Remove button
+            actionButton += ` <button onclick="removeDevice('${device.ip}', '${device.port}')">Remove</button>`;
+
+            return `
+                <td>${device.name || ''}</td>
+                <td>${device.ip}</td>
+                <td>${device.port}</td>
+                <td class="status-${device.status.toLowerCase()}">${device.status}</td>
+                <td class="recording-status ${device.recording ? 'recording-yes' : 'recording-no'}">${device.recording ? 'Recording' : 'Not Recording'}</td>
+                <td>${actionButton}</td>
+            `;
+        }
+
+        // Handle MIDI port form submission
+document.getElementById('set-midi-port-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var midiPort = document.getElementById('midi-port').value;
+
+    fetch('/set_midi_port', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({'midi_port': midiPort})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log('MIDI port set successfully');
+            alert('MIDI port set successfully to ' + midiPort);
+        } else {
+            console.error('Error setting MIDI port:', data.message);
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error setting MIDI port:', error);
+        alert('An error occurred while setting the MIDI port.');
+    });
+});
+
+        
+        // Connect to a single device
+        function connectDevice(ip, port) {
+            fetch('/connect_device', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({'ip': ip, 'port': port})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log(`Connection attempt to ${ip}:${port} initiated`);
+                    // Optionally, provide feedback to the user
+                } else {
+                    console.error(`Error connecting to ${ip}:${port}:`, data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error(`Error connecting to ${ip}:${port}:`, error);
+                alert('An error occurred while attempting to connect to the device.');
+            });
+        }
+
+        // Disconnect from a single device
+        function disconnectDevice(ip, port) {
+            fetch('/disconnect_device', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({'ip': ip, 'port': port})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log(`Disconnected from ${ip}:${port}`);
+                    // Optionally, provide feedback to the user
+                } else {
+                    console.error(`Error disconnecting from ${ip}:${port}:`, data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error(`Error disconnecting from ${ip}:${port}:`, error);
+                alert('An error occurred while attempting to disconnect from the device.');
+            });
+        }
+
+        // Remove device
+        function removeDevice(ip, port) {
+            if (confirm(`Are you sure you want to remove device ${ip}:${port}?`)) {
+                fetch('/remove_device', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({'ip': ip, 'port': port})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('Device removed successfully');
+                        // Remove row from table
+                        var rowId = ip + ':' + port;
+                        var row = document.getElementById(rowId);
+                        if (row) {
+                            row.parentNode.removeChild(row);
+                        }
+                    } else {
+                        console.error('Error removing device:', data.message);
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing device:', error);
+                    alert('An error occurred while removing the device.');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

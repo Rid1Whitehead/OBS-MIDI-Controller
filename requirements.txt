@@ -1,0 +1,6 @@
+Flask
+Flask-SocketIO
+eventlet
+mido
+python-rtmidi
+obs-websocket-py
