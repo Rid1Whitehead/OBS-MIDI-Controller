@@ -1,41 +1,98 @@
 # OBS-MIDI-Controller
-This app manages connections to OBS WebSocket instances and communicates with MIDI signals to control recording functions in OBS. It allows users to start and stop OBS recordings based on MIDI inputs, making it easy to automate video recording tasks using external MIDI controllers. Most importantly, it allows synchronized recording of multiple devices and audio tracks, which allows for the opportunity to use ffmpeg scripts to automize video editing.
 
-## Overview
-The OBS MIDI Recording Controller is a web-based application that allows users to manage multiple OBS (Open Broadcaster Software) instances over WebSocket and control their recording status using MIDI signals. Built using Flask and Flask-SocketIO, this app provides real-time control of OBS recording functions through MIDI inputs, simplifying the process of automating video recording tasks.
+## Description
 
-## Key Features
-- **Manage Multiple OBS Instances**: Easily connect to and manage multiple OBS WebSocket servers.
-- **MIDI-Controlled Recordings**: Start and stop recordings in OBS through MIDI signals, allowing hands-free control.
-- **Real-time Status Updates**: View the connection status and recording state of each connected OBS instance in real time.
-- **OBS WebSocket Integration**: Establish secure WebSocket connections with OBS instances to send recording commands.
-- **Configuration File**: Use `devices.json` to store information about connected OBS devices, including their IP addresses, ports, and passwords.
+OBS Recording Dashboard is a Flask-based web application that allows users to manage and control multiple OBS (Open Broadcaster Software) instances remotely. It provides a centralized interface for starting and stopping recordings across multiple OBS instances simultaneously, triggered by MIDI signals.
 
-## How It Works
-- The app connects to OBS WebSocket instances, allowing remote control of recording features.
-- It listens for MIDI input signals (via loopMIDI or similar software) and triggers start/stop recording commands based on the signals received.
-- WebSocket events are used to update the app's frontend with the current status of each OBS instance, including whether it is currently recording.
+## Features
 
-## System Requirements
-- **Python 3.11.5**
-- **OBS with WebSocket Plugin**
-- **MIDI Input Device or Software** (e.g., loopMIDI)
-- **Supported Libraries**:
-  - Flask
-  - Flask-SocketIO
-  - Eventlet
-  - Mido
-  - obs-websocket-py
-  - rtpmidi
-  - dnspython
+- Connect to multiple OBS instances via WebSocket
+- Start and stop recordings on all connected OBS instances simultaneously
+- Trigger recording actions using MIDI signals
+- Real-time status updates for each OBS instance
+- Add and remove OBS instances dynamically
+- Persistent storage of OBS instance configurations
+- Responsive web interface for easy control and monitoring
+
+## Prerequisites
+
+- Python 3.7+
+- OBS Studio 27.0+ with WebSocket plugin installed on all target machines
+- A MIDI device (optional, for MIDI-triggered recording)
 
 ## Installation
-1. **Clone the Repository**: 
-   Clone the repository to your local machine and navigate into the project directory.
-  
-   git clone <repository_url>
-   cd <project_directory>
-   python install -r requirements.txt
-   python app.py
 
-   The app will be accessible at http://localhost:5000 in your web browser.
+1. Clone the repository:
+   ```
+   git clone https://github.com/Rid1Whitehead/OBS-MIDI-Controller.git
+   cd obs-recording-dashboard
+   ```
+
+2. Create a virtual environment (optional but recommended):
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+## Usage
+
+1. Start the application:
+   ```
+   python app.py
+   ```
+
+2. Open a web browser and navigate to `http://localhost:5000` (or your server's IP address).
+
+3. Set the MIDI port if you're using MIDI for triggering recordings.
+
+4. Add OBS instances by providing their IP addresses, WebSocket ports, and passwords.
+
+5. Connect to the OBS instances using the "Connect" button.
+
+6. Start and stop recordings using MIDI signals.
+
+## Adding OBS Instances
+
+1. In the web interface, fill in the "Device Name", "Device IP", "Port", and "Password" fields.
+2. Click "Add Device" to add the OBS instance to the dashboard.
+
+## Connecting to OBS Instances
+
+- Click "Connect to All OBS Instances" to connect to all added OBS instances.
+- Alternatively, use the "Connect" button next to each instance to connect individually.
+
+## MIDI Configuration
+
+1. Connect your MIDI device to your computer.
+2. In the web interface, enter the MIDI port name in the "Set MIDI Port" field.
+3. Click "Set MIDI Port" to configure the MIDI listener.
+
+## Troubleshooting
+
+- Ensure all OBS instances and the dashboard are on the same network.
+- Verify that the OBS WebSocket plugin is installed and configured correctly on all OBS instances.
+- Check firewall settings to allow WebSocket connections on the specified ports.
+- If a device doesn't connect, try removing and re-adding it to the dashboard.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- OBS Studio team for their excellent broadcasting software
+- Flask and its extensions for providing a robust web framework
+- Eventlet for enabling asynchronous operations
+- MIDO for MIDI functionality
+
+## Disclaimer
+
+This software is provided as-is, without any warranties. Always test thoroughly in a non-production environment before using in critical recording scenarios.
