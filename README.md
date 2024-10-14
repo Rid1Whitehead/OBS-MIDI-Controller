@@ -1,4 +1,4 @@
-# OBS-MIDI-Controller
+# OBS-MIDI-Contoller
 
 ## Description
 
@@ -16,15 +16,17 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 
 ## Prerequisites
 
-- Python 3.7+
+- Python 3.7+ (for running from source)
 - OBS Studio 27.0+ with WebSocket plugin installed on all target machines
 - A MIDI device (optional, for MIDI-triggered recording)
 
 ## Installation
 
+### Option 1: Running from Source
+
 1. Clone the repository:
    ```
-   git clone https://github.com/Rid1Whitehead/OBS-MIDI-Controller.git
+   git clone https://github.com/yourusername/obs-recording-dashboard.git
    cd obs-recording-dashboard
    ```
 
@@ -38,7 +40,20 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
    ```
    pip install -r requirements.txt
    ```
+
+### Option 2: Standalone Executable
+
+For users who prefer a packaged version without the need for Python installation or customization, we provide a standalone executable:
+
+1. Download `app.exe` from the latest release on our GitHub repository.
+2. Place `app.exe` in a directory of your choice.
+3. Double-click `app.exe` to run the application.
+
+Note: The standalone version includes all necessary dependencies and doesn't require Python to be installed on your system.
+
 ## Usage
+
+### Running from Source
 
 1. Start the application:
    ```
@@ -47,13 +62,20 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 
 2. Open a web browser and navigate to `http://localhost:5000` (or your server's IP address).
 
+### Using the Standalone Executable
+
+1. Double-click `app.exe` to start the application.
+2. The application will automatically open your default web browser to `http://localhost:5000`.
+
+### General Usage
+
 3. Set the MIDI port if you're using MIDI for triggering recordings.
 
 4. Add OBS instances by providing their IP addresses, WebSocket ports, and passwords.
 
 5. Connect to the OBS instances using the "Connect" button.
 
-6. Start and stop recordings using MIDI signals.
+6. Start and stop recordings using the web interface or MIDI signals.
 
 ## Adding OBS Instances
 
@@ -77,6 +99,7 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 - Verify that the OBS WebSocket plugin is installed and configured correctly on all OBS instances.
 - Check firewall settings to allow WebSocket connections on the specified ports.
 - If a device doesn't connect, try removing and re-adding it to the dashboard.
+- For the standalone version, ensure that your antivirus software is not blocking the execution of `app.exe`.
 
 ## Contributing
 
@@ -92,7 +115,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Flask and its extensions for providing a robust web framework
 - Eventlet for enabling asynchronous operations
 - MIDO for MIDI functionality
+- PyInstaller for enabling the creation of the standalone executable
 
 ## Disclaimer
 
-This software is provided as-is, without any warranties. Always test thoroughly in a non-production environment before using in critical recording scenarios.
+This software is provided as-is, without any warranties. Always test thoroughly in a non-production environment before using in critical recording scenarios.# OBS-MIDI-Controller
