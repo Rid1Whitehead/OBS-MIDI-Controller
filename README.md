@@ -24,9 +24,8 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 
 ### Option 1: Running from Source
 
-1. Clone the repository:
+1. Clone the repository and navigate to it:
    ```
-   git clone https://github.com/yourusername/obs-recording-dashboard.git
    cd OBS-MIDI-Controller
    ```
 
