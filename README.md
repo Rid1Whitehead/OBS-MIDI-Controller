@@ -1,6 +1,4 @@
-# OBS-OSC-Contoller
-
-## Description
+# OBS-OSC-Controller
 
 OBS Recording Dashboard is a Flask-based web application that allows users to manage and control multiple OBS (Open Broadcaster Software) instances remotely. It provides a centralized interface for starting and stopping recordings across multiple OBS instances a audio recording software that supports OSC listening simultaneously.
 
