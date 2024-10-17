@@ -1,6 +1,5 @@
 Flask
-Flask-SocketIO
+flask-socketio
 eventlet
-mido
-python-rtmidi
 obs-websocket-py
+python-osc

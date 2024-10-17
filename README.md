@@ -1,14 +1,13 @@
-# OBS-MIDI-Contoller
+# OBS-OSC-Contoller
 
 ## Description
 
-OBS Recording Dashboard is a Flask-based web application that allows users to manage and control multiple OBS (Open Broadcaster Software) instances remotely. It provides a centralized interface for starting and stopping recordings across multiple OBS instances simultaneously, triggered by MIDI signals.
+OBS Recording Dashboard is a Flask-based web application that allows users to manage and control multiple OBS (Open Broadcaster Software) instances remotely. It provides a centralized interface for starting and stopping recordings across multiple OBS instances a audio recording software that supports OSC listening simultaneously.
 
 ## Features
 
 - Connect to multiple OBS instances via WebSocket
 - Start and stop recordings on all connected OBS instances simultaneously
-- Trigger recording actions using MIDI signals
 - Real-time status updates for each OBS instance
 - Add and remove OBS instances dynamically
 - Persistent storage of OBS instance configurations
@@ -18,7 +17,6 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 
 - Python 3.7+ (for running from source)
 - OBS Studio 27.0+ with WebSocket plugin installed on all target machines
-- A MIDI device (optional, for MIDI-triggered recording)
 
 ## Installation
 
@@ -26,7 +24,7 @@ OBS Recording Dashboard is a Flask-based web application that allows users to ma
 
 1. Clone the repository and navigate to it:
    ```
-   cd OBS-MIDI-Controller
+   cd OBS-OSC-Controller
    ```
 
 2. Create a virtual environment (optional but recommended):
@@ -68,13 +66,13 @@ Note: The standalone version includes all necessary dependencies and doesn't req
 
 ### General Usage
 
-3. Set the MIDI port if you're using MIDI for triggering recordings.
+3. Set the listening IP address and port for the audio recording software (e.g. REAPER)
 
 4. Add OBS instances by providing their IP addresses, WebSocket ports, and passwords.
 
 5. Connect to the OBS instances using the "Connect" button.
 
-6. Start and stop recordings using the web interface or MIDI signals.
+6. Start and stop recordings using the web interface.
 
 ## Adding OBS Instances
 
@@ -86,11 +84,10 @@ Note: The standalone version includes all necessary dependencies and doesn't req
 - Click "Connect to All OBS Instances" to connect to all added OBS instances.
 - Alternatively, use the "Connect" button next to each instance to connect individually.
 
-## MIDI Configuration
+## OSC Configuration
 
-1. Connect your MIDI device to your computer.
-2. In the web interface, enter the MIDI port name in the "Set MIDI Port" field.
-3. Click "Set MIDI Port" to configure the MIDI listener.
+1. This will vary from program to program.
+2. In REAPER, under options............. WILL ADD THIS.
 
 ## Troubleshooting
 
@@ -108,14 +105,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- OBS Studio team for their excellent broadcasting software
-- Flask and its extensions for providing a robust web framework
-- Eventlet for enabling asynchronous operations
-- MIDO for MIDI functionality
-- PyInstaller for enabling the creation of the standalone executable
-
 ## Disclaimer
 
-This software is provided as-is, without any warranties. Always test thoroughly in a non-production environment before using in critical recording scenarios.# OBS-MIDI-Controller
+This software is provided as-is, without any warranties. Always test thoroughly in a non-production environment before using in critical recording scenarios.

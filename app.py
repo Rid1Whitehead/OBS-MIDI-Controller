@@ -3,10 +3,11 @@ eventlet.monkey_patch()
 
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
-import mido
 from obswebsocket import obsws, requests, exceptions
 import json
 import os
+import time
+from pythonosc import udp_client
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Replace with a strong secret key
@@ -16,9 +17,14 @@ socketio = SocketIO(app, async_mode='eventlet')
 # Global variables
 obs_connections = {}     # Stores active OBS WebSocket connections
 recording_status = {}    # Tracks recording status of each OBS instance
+reaper_client = None     # OSC client for REAPER (initialized when configuration is set)
 
 # In-memory storage for OBS instances
 obs_instances = []
+
+# Initialize REAPER IP and port as None
+REAPER_IP = None
+REAPER_PORT = None
 
 # Load OBS instances from a JSON file
 def load_obs_instances():
@@ -144,56 +150,92 @@ def monitor_connections():
                 del recording_status[key]
         eventlet.sleep(5)  # Wait for 5 seconds before next check
 
-# Modify the midi_listener to use the dynamic midi_port variable
-def midi_listener():
-    print("MIDI listener started")
+# Function to update the REAPER client when IP or port changes
+def update_reaper_client(ip, port):
+    global REAPER_IP, REAPER_PORT, reaper_client
+    REAPER_IP = ip
+    REAPER_PORT = port
     try:
-        with mido.open_input(midi_port) as port:
-            print(f"Listening for MIDI messages on port: {port.name}")
-            while True:
-                for msg in port.iter_pending():
-                    print(f"Received MIDI message: {msg}")
-                    if msg.type == 'start':
-                        start_recording()
-                    elif msg.type == 'stop':
-                        stop_recording()
-                eventlet.sleep(0.1)
+        reaper_client = udp_client.SimpleUDPClient(REAPER_IP, REAPER_PORT)
+        print(f"Updated OSC client for REAPER at {REAPER_IP}:{REAPER_PORT}")
+        return True
     except Exception as e:
-        print(f"MIDI Error: {e}")
-        socketio.emit('log', {'message': f"MIDI Error: {e}"})
+        print(f"Error updating OSC client for REAPER: {e}")
+        return False
 
-# Start the MIDI listener in a background task
-def start_midi_thread():
-    socketio.start_background_task(midi_listener)
-
-# Start recording on all connected devices
+# Start recording on all connected devices and REAPER
 def start_recording():
     print("start_recording() called")
-    for key, ws in obs_connections.items():
-        try:
-            ws.call(requests.StartRecord())
-            recording_status[key] = True
-            print(f"Started recording on {key}")
-            # Find the device in obs_instances to get the name
-            device_name = ''
-            for obs in obs_instances:
-                if obs['ip'] == ws.host and str(obs['port']) == str(ws.port):
-                    device_name = obs.get('name', '')
-                    break
-            socketio.emit('device_status', {
-                'ip': ws.host,
-                'port': ws.port,
-                'name': device_name,
-                'status': 'Connected',
-                'recording': True
-            })
-        except Exception as e:
-            print(f"Error starting recording on {key}: {e}")
-            socketio.emit('log', {'message': f"Error starting recording on {key}: {e}"})
+    # Compute the future start time (e.g., 5 seconds from now)
+    start_time = time.time() + 5  # Adjust the delay as needed
+    print(f"Scheduling recording to start at {time.ctime(start_time)}")
 
-# Stop recording on all connected devices
+    # Start recording in REAPER
+    socketio.start_background_task(start_reaper_recording_at_time, start_time)
+
+    # For each OBS instance, schedule the start recording
+    for key, ws in obs_connections.items():
+        # Start a background task for each device
+        socketio.start_background_task(start_recording_at_time, ws, key, start_time)
+
+def start_reaper_recording_at_time(start_time):
+    # Wait until start_time
+    now = time.time()
+    wait_time = start_time - now
+    if wait_time > 0:
+        print(f"Waiting {wait_time} seconds to start recording in REAPER")
+        eventlet.sleep(wait_time)
+    else:
+        print("Start time already passed for REAPER, starting immediately")
+    # Send the OSC command to start recording
+    if reaper_client:
+        try:
+            reaper_client.send_message('/action/1013', [])  # Action ID 1013 corresponds to 'Transport: Record'
+            print(f"Started recording in REAPER at {time.ctime(time.time())}")
+        except Exception as e:
+            print(f"Error starting recording in REAPER: {e}")
+            socketio.emit('log', {'message': f"Error starting recording in REAPER: {e}"})
+    else:
+        print("REAPER client not configured. Cannot start recording in REAPER.")
+        socketio.emit('log', {'message': "REAPER client not configured. Cannot start recording in REAPER."})
+
+def start_recording_at_time(ws, key, start_time):
+    # Wait until start_time
+    now = time.time()
+    wait_time = start_time - now
+    if wait_time > 0:
+        print(f"Waiting {wait_time} seconds to start recording on {key}")
+        eventlet.sleep(wait_time)
+    else:
+        print(f"Start time already passed for {key}, starting immediately")
+    # Now send the StartRecord command
+    try:
+        ws.call(requests.StartRecord())
+        recording_status[key] = True
+        print(f"Started recording on {key} at {time.ctime(time.time())}")
+        # Update frontend
+        device_name = ''
+        for obs in obs_instances:
+            if obs['ip'] == ws.host and str(obs['port']) == str(ws.port):
+                device_name = obs.get('name', '')
+                break
+        socketio.emit('device_status', {
+            'ip': ws.host,
+            'port': ws.port,
+            'name': device_name,
+            'status': 'Connected',
+            'recording': True
+        })
+    except Exception as e:
+        print(f"Error starting recording on {key}: {e}")
+        socketio.emit('log', {'message': f"Error starting recording on {key}: {e}"})
+
+# Stop recording on all connected devices and REAPER
 def stop_recording():
     print("stop_recording() called")
+    # Stop recording in REAPER
+    socketio.start_background_task(stop_reaper_recording)
+
     for key, ws in obs_connections.items():
         try:
             response = ws.call(requests.StopRecord())
@@ -220,27 +262,22 @@ def stop_recording():
             print(f"Error stopping recording on {key}: {e}")
             socketio.emit('log', {'message': f"Error stopping recording on {key}: {e}"})
 
+def stop_reaper_recording():
+    if reaper_client:
+        try:
+            reaper_client.send_message('/action/1016', [])  # Action ID 1016 corresponds to 'Transport: Stop'
+            print(f"Stopped recording in REAPER at {time.ctime(time.time())}")
+        except Exception as e:
+            print(f"Error stopping recording in REAPER: {e}")
+            socketio.emit('log', {'message': f"Error stopping recording in REAPER: {e}"})
+    else:
+        print("REAPER client not configured. Cannot stop recording in REAPER.")
+        socketio.emit('log', {'message': "REAPER client not configured. Cannot stop recording in REAPER."})
+
 # Flask routes
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/set_midi_port', methods=['POST'])
-def set_midi_port():
-    global midi_port
-    data = request.get_json()
-    new_midi_port = data.get('midi_port', None)
-    
-    if not new_midi_port:
-        return jsonify({'status': 'error', 'message': 'MIDI port is required'}), 400
-    
-    midi_port = new_midi_port
-    print(f"MIDI port updated to: {midi_port}")
-
-    # Restart the MIDI listener with the new port
-    start_midi_thread()
-    
-    return jsonify({'status': 'success', 'message': f'MIDI port set to {midi_port}'})
 
 @app.route('/get_devices', methods=['GET'])
 def get_devices():
@@ -322,6 +359,41 @@ def disconnect_device_route():
     disconnect_obs_instance(data['ip'], data['port'])
     return jsonify({'status': 'success'})
 
+@app.route('/start_recording', methods=['POST'])
+def start_recording_route():
+    start_recording()
+    return jsonify({'status': 'success'})
+
+@app.route('/stop_recording', methods=['POST'])
+def stop_recording_route():
+    stop_recording()
+    return jsonify({'status': 'success'})
+
+# New route to set REAPER configuration
+@app.route('/set_reaper_config', methods=['POST'])
+def set_reaper_config():
+    data = request.get_json()
+    ip = data.get('reaper_ip', None)
+    port = data.get('reaper_port', None)
+
+    if not ip or not port:
+        return jsonify({'status': 'error', 'message': 'REAPER IP and port are required'}), 400
+
+    # Update the REAPER client
+    success = update_reaper_client(ip, int(port))
+    if success:
+        return jsonify({'status': 'success', 'message': f'REAPER configuration updated to {ip}:{port}'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to update REAPER configuration'}), 500
+
+# New route to get current REAPER configuration
+@app.route('/get_reaper_config', methods=['GET'])
+def get_reaper_config():
+    if REAPER_IP and REAPER_PORT:
+        return jsonify({'reaper_ip': REAPER_IP, 'reaper_port': REAPER_PORT})
+    else:
+        return jsonify({'reaper_ip': '', 'reaper_port': ''})
+
 # WebSocket event handlers
 @socketio.on('connect')
 def handle_connect():
@@ -346,8 +418,7 @@ def handle_disconnect():
 if __name__ == '__main__':
     # Load OBS instances from devices.json
     load_obs_instances()
-    # Start MIDI listener thread
-    start_midi_thread()
+    # Remove or comment out the create_reaper_client() call
     # Start connection monitor thread
     socketio.start_background_task(monitor_connections)
     # Do not connect automatically on startup

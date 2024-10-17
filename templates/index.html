@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OBS Sync and observation dashboard</title>
+    <title>OBS Sync and Recording Dashboard</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Include Socket.IO client (version 4.x) without integrity attribute -->
+    <!-- Include Socket.IO client -->
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
@@ -12,14 +12,23 @@
     <h2>Some important considerations:</h2>
     <p>
         Make sure all devices are on the same network.<br>
-        Do not close the terminal window used to start this dashboard.
-        If device does not connect, kick and renter details
+        Do not close the terminal window used to start this dashboard.<br>
+        If a device does not connect, remove and re-enter its details.
     </p>
-    <h2>Set MIDI Port</h2>
-<form id="set-midi-port-form">
-    <input type="text" id="midi-port" placeholder="Enter MIDI Port Name" required>
-    <button type="submit">Set MIDI Port</button>
-</form>
+
+    <!-- Start/Stop Recording Buttons -->
+    <h2>Control Recording</h2>
+    <button id="start-recording-btn">Start Recording</button>
+    <button id="stop-recording-btn">Stop Recording</button>
+
+    <!-- New section to set REAPER configuration -->
+    <h2>Set REAPER Configuration</h2>
+    <form id="set-reaper-config-form">
+        <input type="text" id="reaper-ip" placeholder="REAPER IP Address" required>
+        <input type="number" id="reaper-port" placeholder="REAPER Port" required>
+        <button type="submit">Set REAPER Config</button>
+    </form>
+
     <h2>Add OBS Instance</h2>
     <form id="add-device-form">
         <input type="text" id="name" placeholder="Device Name">
@@ -75,6 +84,17 @@
                 console.error('Error fetching devices:', error);
             });
 
+        // Fetch current REAPER configuration on page load
+        fetch('/get_reaper_config')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('reaper-ip').value = data.reaper_ip || '';
+                document.getElementById('reaper-port').value = data.reaper_port || '';
+            })
+            .catch(error => {
+                console.error('Error fetching REAPER configuration:', error);
+            });
+
         // Handle device status updates
         socket.on('device_status', function(data) {
             console.log('Received device_status:', data);
@@ -124,6 +144,33 @@
             });
         });
 
+        // Handle REAPER configuration form submission
+        document.getElementById('set-reaper-config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var reaperIp = document.getElementById('reaper-ip').value;
+            var reaperPort = document.getElementById('reaper-port').value;
+
+            fetch('/set_reaper_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({'reaper_ip': reaperIp, 'reaper_port': reaperPort})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('REAPER configuration updated successfully');
+                    alert('REAPER configuration set successfully to ' + reaperIp + ':' + reaperPort);
+                } else {
+                    console.error('Error setting REAPER configuration:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error setting REAPER configuration:', error);
+                alert('An error occurred while setting the REAPER configuration.');
+            });
+        });
+
         // Connect to All OBS Instances button
         document.getElementById('connect-instances-btn').addEventListener('click', function() {
             fetch('/connect_obs_instances', {
@@ -142,6 +189,48 @@
             .catch(error => {
                 console.error('Error initiating connection:', error);
                 alert('An error occurred while attempting to connect to OBS instances.');
+            });
+        });
+
+        // Start Recording button
+        document.getElementById('start-recording-btn').addEventListener('click', function() {
+            fetch('/start_recording', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Recording start initiated');
+                    alert('Recording will start shortly.');
+                } else {
+                    console.error('Error starting recording:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error starting recording:', error);
+                alert('An error occurred while starting recording.');
+            });
+        });
+
+        // Stop Recording button
+        document.getElementById('stop-recording-btn').addEventListener('click', function() {
+            fetch('/stop_recording', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Recording stop initiated');
+                    alert('Recording has been stopped.');
+                } else {
+                    console.error('Error stopping recording:', data.message);
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error stopping recording:', error);
+                alert('An error occurred while stopping recording.');
             });
         });
 
@@ -195,33 +284,6 @@
             `;
         }
 
-        // Handle MIDI port form submission
-document.getElementById('set-midi-port-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var midiPort = document.getElementById('midi-port').value;
-
-    fetch('/set_midi_port', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({'midi_port': midiPort})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log('MIDI port set successfully');
-            alert('MIDI port set successfully to ' + midiPort);
-        } else {
-            console.error('Error setting MIDI port:', data.message);
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error setting MIDI port:', error);
-        alert('An error occurred while setting the MIDI port.');
-    });
-});
-
-        
         // Connect to a single device
         function connectDevice(ip, port) {
             fetch('/connect_device', {
